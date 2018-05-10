@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Enables CloudTrail for this account, sending logs to central location
+
+
+Parameters:
+  CloudtrailBucketName:
+    Description: Name of the S3 bucket that stores the cloudtrail logs
+    Type: String
+  ConfigBucketName:
+    Description: Name of the S3 bucket that stores the config data
+    Type: String
+
+
+Resources:
+  Trail:
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      EnableLogFileValidation: true
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      IsMultiRegionTrail: true
+      S3BucketName:
+        Ref: CloudtrailBucketName
+      Tags:
+      - Key: Stack
+        Value: security
+      - Key: App
+        Value: cloudtrail
+
+  ConfigRecorderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - config.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSConfigRole
+
+  ConfigRecorder:
+    Type: AWS::Config::ConfigurationRecorder
+    Properties:
+      RoleARN: !GetAtt ConfigRecorderRole.Arn
+
+  ConfigDeliveryChannel:
+    Type: AWS::Config::DeliveryChannel
+    Properties:
+      S3BucketName: 
+        Ref: ConfigBucketName
+
